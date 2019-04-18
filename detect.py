@@ -8,18 +8,19 @@ import time
 
 IMAGE_SIZE = (1280, 720)
 GRAD_THRESHOLD = 50
-BG_THRESHOLD = 70
-MOTION_THRESHOLD = 30
+BG_THRESHOLD = 50
+MOTION_THRESHOLD = 20
 WIRE_BLACK = (10, 10, 10)
 ERODE_SIZE = 11
 DILATE_SIZE = 11
 FIELD_DILATE_SIZE = 51
 APPROX_EPS = 20
+TIME_SCALE = 100.0
 
-ROBOT_MIN = 10000
-MOVING_MIN = 30000
-PARK_MIN = 10000
-NO_PARK_MIN = 10000
+ROBOT_MIN = 50000
+MOVING_MIN = 50000
+PARK_MIN = 50000
+NO_PARK_MIN = 30000
 
 
 
@@ -95,10 +96,11 @@ def fancyDisplayImage(frame, displaymask, state=None, time=None):
     if state is not None:
         if state == PARKED:
             color = (0,255,0)
-            text = "Parked! " + str(int(time * 100) / 100.0) + "s"
-        else:
+        elif state == STUMBLED:
             color = (0,0,255)
-            text = "Stumbled! " + str(int(time * 100) / 100.0) + "s"
+        else:
+            color = (255,0,0)
+        text = str(int(time * TIME_SCALE) / TIME_SCALE) + "s"
 
         cv.putText(frame, text, (100, 100), cv.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
@@ -125,7 +127,7 @@ background = cv.resize(background, IMAGE_SIZE)
 prevframe = background.copy()
 finishBox, boxmask, fieldmask = findFinishBox(background)
 
-state = WAITING
+state = "WAITING"
 stateTime = time.time()
 
 while (cap.isOpened()):
@@ -144,7 +146,10 @@ while (cap.isOpened()):
 
     cv.copyTo(frame, None, prevframe)
 
-    cv.imshow("Image", fancyDisplayImage(frame, displaymask))
+    if state == WAITING:
+        cv.imshow("Image", fancyDisplayImage(frame, displaymask, state, time.time() - stateTime))
+    else:
+        cv.imshow("Image", fancyDisplayImage(frame, displaymask))
     if cv.waitKey(1) & 0xFF == ord('q'):
         break
 
@@ -153,7 +158,7 @@ while (cap.isOpened()):
     if (state != newState):
         state = newState
         newTime = time.time()
-        print(state, newTime,robotsum, movesum, parksum, noparksum)
+        print(state, newTime, newTime - stateTime, robotsum, movesum, parksum, noparksum)
 
         if state != WAITING:
             cv.imshow("Image", fancyDisplayImage(frame, displaymask, state, newTime - stateTime))
